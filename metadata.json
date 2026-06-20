@@ -1,0 +1,6 @@
+{
+  "name": "Dream2Skills AI",
+  "description": "An AI-powered career accelerator that analyzes skill gaps, charts personalized roadmaps, recommends projects, schedules studies, and offers interview prep & professional mentorship.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
