@@ -143,4 +143,67 @@ export interface CareerDetails {
   skills: string[];
   certifications: string[];
   marketDemand: 'High' | 'Medium' | 'Low';
+  topRecruiters?: CompanyRecruiterSummary[];
+}
+
+export interface CompanyRecruiterSummary {
+  name: string;
+  rating: string;
+  reviews: string;
+  fresherSalary: string;
+  midSalary: string;
+  internshipStipend: string;
+  location: string;
+  careersUrl: string;
+  ambitionBoxUrl: string;
+  hiringStatus: string;
+}
+
+export interface CompanyProfile {
+  id: string;
+  name: string;
+  sector: string;
+  rating: string;
+  reviewsCount: string;
+  fresherCtc: string;
+  midLevelCtc: string;
+  seniorCtc: string;
+  internStipend: string;
+  locations: string[];
+  headquarters: string;
+  about: string;
+  workCulture: string;
+  benefits: string[];
+  openRolesCount: number;
+  hiringBatch: string;
+  directCareersUrl: string;
+  ambitionBoxUrl: string;
+  featuredRoles: string[];
+  updatedAt: string;
+}
+
+export interface MarketPulse {
+  lastUpdated: string;
+  nextUpdateInSeconds: number;
+  cycleNumber: number;
+  activeJobsCount: number;
+  activeCompaniesCount: number;
+  fresherAverageLpa: string;
+  topHiringSector: string;
+  companies: CompanyProfile[];
+}
+
+export interface AiConfig {
+  openRouterApiKey?: string;
+  preferredModel?: string;
+  preferredProvider?: 'gemini' | 'openrouter' | 'auto';
+}
+
+export interface AiStatus {
+  geminiAvailable: boolean;
+  openRouterAvailable: boolean;
+  activeProvider: 'gemini' | 'openrouter' | 'local';
+  preferredModel: string;
+  hasOpenRouterKey: boolean;
+  maskedKey: string;
 }

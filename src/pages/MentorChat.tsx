@@ -23,13 +23,14 @@ interface MentorChatProps {
 }
 
 export default function MentorChat({ careerGoal }: MentorChatProps) {
+  const [activeRole, setActiveRole] = useState(careerGoal || 'Software Engineer');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'model',
       text: `Hello! I'm your dedicated AI Career Mentor. I'm equipped with standard industry insights and field knowledge to help you transition into becoming an expert in ${careerGoal || 'your target technical space'}. 
 
-What is your current progress, or is there any specific framework certification you would like to analyze today?`,
+What is your current progress, or is there any specific framework, career milestone, or certification you would like to analyze today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -37,6 +38,12 @@ What is your current progress, or is there any specific framework certification 
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (careerGoal) {
+      setActiveRole(careerGoal);
+    }
+  }, [careerGoal]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,7 +70,7 @@ What is your current progress, or is there any specific framework certification 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          career: careerGoal || 'Software Professional',
+          career: activeRole || 'Software Professional',
           message: activeText,
           chatHistory: messages.map(m => ({ role: m.role, text: m.text }))
         }),
@@ -162,7 +169,7 @@ What is your current progress, or is there any specific framework certification 
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <div>
               <h3 className="text-xs font-extrabold text-white leading-none">Live Copilot Consultant Session</h3>
-              <span className="text-[9px] text-slate-500 font-mono">Active Target focus: {careerGoal || 'General Trajectories'}</span>
+              <span className="text-[9px] text-slate-400 font-mono">Advising for: <span className="text-indigo-400 font-bold">{activeRole}</span></span>
             </div>
           </div>
 

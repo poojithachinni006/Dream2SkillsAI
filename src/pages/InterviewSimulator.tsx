@@ -124,7 +124,7 @@ export default function InterviewSimulator({ careerGoal }: InterviewSimulatorPro
               {loading ? (
                 <>
                   <Clock className="w-4 h-4 animate-spin" />
-                  <span>Prompting Gemini Engine...</span>
+                  <span>Generating Interview Simulation...</span>
                 </>
               ) : (
                 <>

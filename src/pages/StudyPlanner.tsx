@@ -23,16 +23,23 @@ interface StudyPlannerProps {
 }
 
 export default function StudyPlanner({ careerGoal, onRefreshDashboard }: StudyPlannerProps) {
+  const [career, setCareer] = useState(careerGoal || 'Full Stack Developer');
   const [hoursPerDay, setHoursPerDay] = useState(2);
   const [targetDate, setTargetDate] = useState('2026-07-01');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<StudyPlan | null>(null);
 
+  React.useEffect(() => {
+    if (careerGoal) {
+      setCareer(careerGoal);
+    }
+  }, [careerGoal]);
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!careerGoal) {
-      setError('Please map a target Career Goal first on the Explorer or Analyzer tabs prior to scheduling study timetables.');
+    if (!career.trim()) {
+      setError('Please specify a target dream role or career.');
       return;
     }
     setError('');
@@ -43,7 +50,7 @@ export default function StudyPlanner({ careerGoal, onRefreshDashboard }: StudyPl
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          career: careerGoal,
+          career: career.trim(),
           hoursPerDay: hoursPerDay,
           targetDate: targetDate
         }),
@@ -55,9 +62,12 @@ export default function StudyPlanner({ careerGoal, onRefreshDashboard }: StudyPl
 
       const data = await response.json();
       setPlan(data);
+      if (onRefreshDashboard) {
+        await onRefreshDashboard();
+      }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Error occurred connecting with Gemini scheduler.');
+      setError(err.message || 'Error occurred connecting with AI scheduler.');
     } finally {
       setLoading(false);
     }
@@ -90,10 +100,17 @@ export default function StudyPlanner({ careerGoal, onRefreshDashboard }: StudyPl
           <span className="text-xs font-bold text-white uppercase tracking-wider font-mono text-indigo-400 block mb-4">Timetable configuration</span>
 
           <form onSubmit={handleGenerate} className="space-y-5">
-            {/* Display Active Goal */}
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-850">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold font-mono block">Scheduling For Target Goal:</span>
-              <span className="text-xs font-extrabold text-white leading-loose block mt-0.5">{careerGoal || 'No Career selected yet'}</span>
+            {/* Display Active Goal with editable input */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold font-mono">Scheduling For Target Career</label>
+              <input
+                type="text"
+                placeholder="e.g. Full Stack Developer, AI Engineer"
+                value={career}
+                onChange={(e) => setCareer(e.target.value)}
+                className="w-full text-xs p-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-600 transition"
+                required
+              />
             </div>
 
             {/* Hours per day select */}

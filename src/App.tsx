@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 // Models
-import { User, CareerGoal, UserSkill } from './types';
+import { User, CareerGoal, UserSkill, AiStatus } from './types';
 
 // Sidebar Navigation
 import Navigation from './components/Navigation';
@@ -39,7 +39,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [goal, setGoal] = useState<CareerGoal | null>(null);
   const [skills, setSkills] = useState<UserSkill[]>([]);
-  const [isAiOnline, setIsAiOnline] = useState(false);
+  const [isAiOnline, setIsAiOnline] = useState(true);
 
   // Prefilled career selected from Explorer
   const [prefilledCareer, setPrefilledCareer] = useState('');
@@ -79,19 +79,13 @@ export default function App() {
     }
   };
 
-  // Run dynamic target check for Gemini API key status
+  // Run dynamic check for AI Engine / OpenRouter / Gemini key status
   const diagnoseAiEngine = async () => {
     try {
-      // Test the simple analyzer with empty contents or just checking mock
-      const res = await fetch('/api/skill-gap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetCareer: 'test', currentSkills: 'test' }),
-      });
+      const res = await fetch('/api/ai-config');
       if (res.ok) {
-        const data = await res.json();
-        // Since offline mode appends note/mock, check for Gemini indicators
-        setIsAiOnline(!data.note);
+        const data: AiStatus = await res.json();
+        setIsAiOnline(data.activeProvider !== 'local');
       }
     } catch (err) {
       setIsAiOnline(false);

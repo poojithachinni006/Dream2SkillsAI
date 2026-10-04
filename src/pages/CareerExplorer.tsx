@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Compass, 
   Search, 
@@ -33,9 +33,18 @@ import {
   Plane,
   Dna,
   Radio,
-  Bot
+  Bot,
+  RefreshCw,
+  Clock,
+  ExternalLink,
+  MapPin,
+  Users,
+  CheckCircle2,
+  ChevronRight,
+  SlidersHorizontal
 } from 'lucide-react';
-import { CareerDetails } from '../types';
+import { CareerDetails, MarketPulse, CompanyProfile } from '../types';
+import { VERIFIED_COMPANIES, getRecruitersForCareer } from '../data/marketData';
 
 interface CareerExplorerProps {
   onAnalyzeCareer: (career: string) => void;
@@ -322,6 +331,73 @@ export default function CareerExplorer({ onAnalyzeCareer }: CareerExplorerProps)
   const [customRate, setCustomRate] = useState<string>(''); // Default empty means use default rate
   const [isFilterByExpectation, setIsFilterByExpectation] = useState<boolean>(false);
 
+  // 10-Minute Market Live Engine state
+  const [marketPulse, setMarketPulse] = useState<MarketPulse | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(600);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'careers' | 'companies'>('careers');
+  const [companySearch, setCompanySearch] = useState<string>('');
+  const [selectedSector, setSelectedSector] = useState<string>('All');
+  const [selectedCompanyModal, setSelectedCompanyModal] = useState<CompanyProfile | null>(null);
+
+  const fetchMarketPulse = async (showLoading = false) => {
+    if (showLoading) setIsSyncing(true);
+    try {
+      const res = await fetch('/api/market-pulse');
+      if (res.ok) {
+        const data = await res.json();
+        setMarketPulse(data);
+        if (typeof data.nextUpdateInSeconds === 'number') {
+          setCountdownSeconds(data.nextUpdateInSeconds);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching market pulse:', err);
+    } finally {
+      if (showLoading) setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMarketPulse(false);
+  }, []);
+
+  // 1-second countdown ticker for 10-minute auto refresh cycle
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          fetchMarketPulse(false);
+          return 600;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleForceRefresh = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/market-refresh', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setMarketPulse(data);
+        setCountdownSeconds(600);
+      }
+    } catch (err) {
+      console.error('Error force refreshing:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   // Helper to resolve currently active currency conversion rate
   const getActiveRate = (currency: typeof CURRENCIES[0]) => {
     if (currency.code === selectedCurrency.code && customRate && !isNaN(parseFloat(customRate))) {
@@ -423,20 +499,101 @@ export default function CareerExplorer({ onAnalyzeCareer }: CareerExplorerProps)
     }
   };
 
+  const sectorOptions = ['All', 'Cloud, AI & Big Tech', 'Fintech', 'SaaS', 'Semiconductors', 'Automotive & EV', 'Civil Infrastructure', 'Biotech & Pharma', 'Global IT'];
+
+  const filteredCompanies = VERIFIED_COMPANIES.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(companySearch.toLowerCase()) ||
+      c.sector.toLowerCase().includes(companySearch.toLowerCase()) ||
+      c.featuredRoles.some(r => r.toLowerCase().includes(companySearch.toLowerCase())) ||
+      c.locations.some(l => l.toLowerCase().includes(companySearch.toLowerCase()));
+    
+    if (!matchesSearch) return false;
+
+    if (selectedSector !== 'All') {
+      return c.sector.toLowerCase().includes(selectedSector.toLowerCase());
+    }
+    return true;
+  });
+
   return (
-    <div className="flex-1 p-6 overflow-y-auto bg-slate-950 text-slate-100 flex flex-col lg:flex-row gap-6 min-h-screen">
-      {/* Careers Left Panel */}
-      <div className="flex-1 space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-900">
+    <div className="flex-1 p-6 overflow-y-auto bg-slate-950 text-slate-100 min-h-screen space-y-6">
+      {/* 10-Minute Live Market Sync Banner */}
+      <div className="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-900/90 border border-indigo-900/40 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <TrendingUp className="w-5 h-5 text-indigo-400" />
+          </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <Compass className="w-5 h-5 text-indigo-500" />
-              <span>Standard Support Trajectories</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Explore standard high-demand positions and inspect details</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-white text-sm">Live Market & Salary Index</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 border border-emerald-800 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live 10-Min Cycle #{marketPulse?.cycleNumber || 1}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                • {marketPulse?.activeJobsCount || 520}+ Fresher Openings Active
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Verified AmbitionBox ratings, live fresher CTC, and corporate career pages synchronized every 10 minutes.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 self-end sm:self-center">
+          <div className="text-right">
+            <span className="text-[9px] uppercase font-mono text-slate-500 font-bold block">Next Auto-Sync</span>
+            <span className="text-xs font-mono font-extrabold text-indigo-300 flex items-center gap-1 justify-end">
+              <Clock className="w-3.5 h-3.5 text-indigo-400" />
+              {formatCountdown(countdownSeconds)}
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={handleForceRefresh}
+            disabled={isSyncing}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-sm"
+            title="Force immediate market update"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* View Mode Toggle Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900 pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('careers')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              viewMode === 'careers'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-850'
+            }`}
+          >
+            <Compass className="w-4 h-4" />
+            <span>Career Paths ({DEFAULT_CAREERS.length})</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('companies')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              viewMode === 'companies'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-850'
+            }`}
+          >
+            <Building className="w-4 h-4" />
+            <span>Top Companies & Verified Salaries ({VERIFIED_COMPANIES.length})</span>
+            <span className="text-[9px] bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-1.5 py-0.2 rounded-full font-mono">
+              Live
+            </span>
+          </button>
+        </div>
+
+        {viewMode === 'careers' && (
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Currency Selector Bar */}
             <div className="bg-slate-900/90 border border-slate-800 p-1 rounded-lg flex items-center gap-1">
               <Coins className="w-3.5 h-3.5 text-slate-500 ml-2 mr-1" />
@@ -470,210 +627,538 @@ export default function CareerExplorer({ onAnalyzeCareer }: CareerExplorerProps)
               />
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Custom Salary & Currency Controls Row */}
-        <div className="bg-slate-900/40 border border-slate-850 p-4 rounded-xl space-y-3 font-sans">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-850/60 pb-2">
-            <div className="flex items-center gap-2">
-              <Coins className="w-4 h-4 text-emerald-400" />
-              <span className="text-[12px] font-bold text-slate-200">Interactive Salary Adjuster & Exchange Overrides</span>
-            </div>
-            <div className="text-[11px] text-slate-400 font-mono">
-              Base Price Multiplier: <strong className="text-white">1 USD = {getActiveRate(selectedCurrency)} {selectedCurrency.code}</strong>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            {/* Custom Rate Input */}
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 font-mono uppercase block">Set Custom Conversion Rate</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder={`Default: ${selectedCurrency.rate}`}
-                  value={customRate}
-                  onChange={(e) => setCustomRate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-600 font-mono"
-                />
-                {customRate && (
-                  <button 
-                    onClick={() => setCustomRate('')} 
-                    className="text-[10px] text-rose-400 hover:text-rose-350 font-bold border border-rose-900/60 bg-rose-950/20 px-2 rounded-md transition"
-                    title="Reset to official rate"
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Target Salary expectation slider filter */}
-            <div className="space-y-1 md:col-span-2">
-              <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 font-mono uppercase">
-                <span className="text-indigo-400">Expectation: {expectedSalary > 0 ? `${expectedSalary}${selectedCurrency.code === 'INR' ? ' Lakhs' : 'k'}` : 'Min / Any'}</span>
-                <div className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="enableFilter"
-                    checked={isFilterByExpectation}
-                    onChange={(e) => setIsFilterByExpectation(e.target.checked)}
-                    className="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-indigo-600"
-                  />
-                  <label htmlFor="enableFilter" className="cursor-pointer select-none text-slate-300 hover:text-white">Filter by my Target</label>
+      {/* VIEW MODE 1: CAREER PATHS */}
+      {viewMode === 'careers' && (
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Careers Left Panel */}
+          <div className="flex-1 space-y-4">
+            {/* Custom Salary & Currency Controls Row */}
+            <div className="bg-slate-900/40 border border-slate-850 p-4 rounded-xl space-y-3 font-sans">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-850/60 pb-2">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-emerald-400" />
+                  <span className="text-[12px] font-bold text-slate-200">Interactive Salary Adjuster & Exchange Overrides</span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  Base Price Multiplier: <strong className="text-white">1 USD = {getActiveRate(selectedCurrency)} {selectedCurrency.code}</strong>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="0"
-                  max={selectedCurrency.code === 'INR' ? '150' : '250'}
-                  value={expectedSalary}
-                  onChange={(e) => {
-                    setExpectedSalary(Number(e.target.value));
-                    setIsFilterByExpectation(true);
-                  }}
-                  className="w-full accent-indigo-600 bg-slate-950 h-1 rounded-lg border-none"
-                />
-                <span className="text-[11px] font-mono text-slate-300 w-16 shrink-0 text-right">
-                  {expectedSalary > 0 ? `${expectedSalary}${selectedCurrency.code === 'INR' ? ' Lakhs' : 'k'}` : '0 USD'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Roles List */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {filteredCareers.map((c) => (
-            <div
-              key={c.title}
-              onClick={() => setSelectedCareer(c)}
-              className={`p-4 rounded-xl border transition-all duration-150 cursor-pointer flex flex-col justify-between ${
-                selectedCareer?.title === c.title
-                  ? 'bg-gradient-to-b from-indigo-950/40 to-slate-900 border-indigo-600/80 shadow-md shadow-indigo-500/5'
-                  : 'bg-slate-900/45 border-slate-850 hover:bg-slate-900/85 hover:border-slate-800'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center">
-                      {getCareerIcon(c.title)}
-                    </div>
-                    <h3 className="text-xs font-bold text-white tracking-tight">{c.title}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                {/* Custom Rate Input */}
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 font-mono uppercase block">Set Custom Conversion Rate</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder={`Default: ${selectedCurrency.rate}`}
+                      value={customRate}
+                      onChange={(e) => setCustomRate(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-600 font-mono"
+                    />
+                    {customRate && (
+                      <button 
+                        onClick={() => setCustomRate('')} 
+                        className="text-[10px] text-rose-400 hover:text-rose-350 font-bold border border-rose-900/60 bg-rose-950/20 px-2 rounded-md transition"
+                        title="Reset to official rate"
+                      >
+                        Reset
+                      </button>
+                    )}
                   </div>
-                  <span className={`text-[9px] font-mono font-medium px-2 py-0.5 rounded-full border ${getDemandColor(c.marketDemand)}`}>
-                    {c.marketDemand} Demand
-                  </span>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-normal line-clamp-2">{c.description}</p>
-              </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-950 flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                <span className="flex items-center gap-1 font-semibold text-slate-350 bg-slate-950/35 border border-slate-850/60 py-1 px-2 rounded-md">
-                  <Coins className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{formatSalaryRange(c.salaryMin, c.salaryMax, selectedCurrency)}</span>
-                </span>
-                <span className="text-indigo-400 font-semibold group flex items-center gap-1 hover:underline">
-                  <span>View Details</span>
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                </span>
+                {/* Target Salary expectation slider filter */}
+                <div className="space-y-1 md:col-span-2">
+                  <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 font-mono uppercase">
+                    <span className="text-indigo-400">Expectation: {expectedSalary > 0 ? `${expectedSalary}${selectedCurrency.code === 'INR' ? ' Lakhs' : 'k'}` : 'Min / Any'}</span>
+                    <div className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="enableFilter"
+                        checked={isFilterByExpectation}
+                        onChange={(e) => setIsFilterByExpectation(e.target.checked)}
+                        className="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-indigo-600"
+                      />
+                      <label htmlFor="enableFilter" className="cursor-pointer select-none text-slate-300 hover:text-white">Filter by my Target</label>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0"
+                      max={selectedCurrency.code === 'INR' ? '150' : '250'}
+                      value={expectedSalary}
+                      onChange={(e) => {
+                        setExpectedSalary(Number(e.target.value));
+                        setIsFilterByExpectation(true);
+                      }}
+                      className="w-full accent-indigo-600 bg-slate-950 h-1 rounded-lg border-none"
+                    />
+                    <span className="text-[11px] font-mono text-slate-300 w-16 shrink-0 text-right">
+                      {expectedSalary > 0 ? `${expectedSalary}${selectedCurrency.code === 'INR' ? ' Lakhs' : 'k'}` : '0 USD'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
 
-          {filteredCareers.length === 0 && (
-            <div className="p-8 text-center bg-slate-900/25 border border-slate-900 rounded-xl col-span-2">
-              <p className="text-xs text-slate-500">No matching careers identified in our standard directory.</p>
-              <p className="text-[10px] text-slate-600 mt-1">Try entering a search like 'AI' or 'Cloud DevOps'.</p>
+            {/* Roles List */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {filteredCareers.map((c) => (
+                <div
+                  key={c.title}
+                  onClick={() => setSelectedCareer(c)}
+                  className={`p-4 rounded-xl border transition-all duration-150 cursor-pointer flex flex-col justify-between ${
+                    selectedCareer?.title === c.title
+                      ? 'bg-gradient-to-b from-indigo-950/40 to-slate-900 border-indigo-600/80 shadow-md shadow-indigo-500/5'
+                      : 'bg-slate-900/45 border-slate-850 hover:bg-slate-900/85 hover:border-slate-800'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center">
+                          {getCareerIcon(c.title)}
+                        </div>
+                        <h3 className="text-xs font-bold text-white tracking-tight">{c.title}</h3>
+                      </div>
+                      <span className={`text-[9px] font-mono font-medium px-2 py-0.5 rounded-full border ${getDemandColor(c.marketDemand)}`}>
+                        {c.marketDemand} Demand
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-normal line-clamp-2">{c.description}</p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-950 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                    <span className="flex items-center gap-1 font-semibold text-slate-350 bg-slate-950/35 border border-slate-850/60 py-1 px-2 rounded-md">
+                      <Coins className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>{formatSalaryRange(c.salaryMin, c.salaryMax, selectedCurrency)}</span>
+                    </span>
+                    <span className="text-indigo-400 font-semibold group flex items-center gap-1 hover:underline">
+                      <span>View Details</span>
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {filteredCareers.length === 0 && (
+                <div className="p-8 text-center bg-slate-900/25 border border-slate-900 rounded-xl col-span-2">
+                  <p className="text-xs text-slate-500">No matching careers identified in our standard directory.</p>
+                  <p className="text-[10px] text-slate-600 mt-1">Try entering a search like 'AI' or 'Cloud DevOps'.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Selected Career Details Panel Right Side */}
+          {selectedCareer ? (
+            <div className="w-full lg:w-96 bg-slate-900/60 border border-slate-850 rounded-2xl p-6 flex flex-col justify-between shrink-0 h-fit space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
+                    {getCareerIcon(selectedCareer.title)}
+                  </div>
+                  <div>
+                    <h2 className="text-base font-extrabold text-white leading-tight">{selectedCareer.title}</h2>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full border ${getDemandColor(selectedCareer.marketDemand)}`}>
+                        {selectedCareer.marketDemand} Demand
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-400 leading-relaxed pt-2">
+                  {selectedCareer.description}
+                </p>
+
+                {/* Salary Scale */}
+                <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-850">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-550 font-semibold font-mono block mb-2 text-slate-500">Approximate Base Compensation ({selectedCurrency.code})</span>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-mono block">Median Low</span>
+                      <span className="text-sm font-bold text-slate-350 font-mono">{formatFullSalary(selectedCareer.salaryMin, selectedCurrency)}</span>
+                    </div>
+                    <div className="flex-1 mx-3 h-1.5 bg-slate-850 rounded-full relative bottom-1.5 overflow-hidden">
+                      <div className="absolute left-1/4 right-1/4 h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full" />
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-500 font-mono block">Median High</span>
+                      <span className="text-sm font-bold text-white font-mono">{formatFullSalary(selectedCareer.salaryMax, selectedCurrency)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Hiring Companies & Verified Packages */}
+                <div className="space-y-2.5 pt-2 border-t border-slate-850">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider text-indigo-400 font-extrabold font-mono flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Top Recruiting Companies & Verified Salaries</span>
+                    </span>
+                    <span className="text-[9px] text-emerald-400 font-mono font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Live Verified
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {getRecruitersForCareer(selectedCareer.title).map((recruiter, idx) => (
+                      <div key={idx} className="p-2.5 bg-slate-950/80 border border-slate-850 rounded-xl space-y-1.5 hover:border-slate-800 transition">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="text-xs font-bold text-white">{recruiter.name}</h4>
+                              <a
+                                href={recruiter.ambitionBoxUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] bg-amber-950/60 border border-amber-900 text-amber-400 px-1.5 py-0.2 rounded font-mono hover:border-amber-500 transition"
+                                title="View reviews on AmbitionBox"
+                              >
+                                ★ {recruiter.rating}
+                              </a>
+                            </div>
+                            <span className="text-[9px] text-slate-500 font-sans">{recruiter.location}</span>
+                          </div>
+
+                          <a
+                            href={recruiter.careersUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[9px] bg-indigo-950/70 border border-indigo-900 text-indigo-300 px-2 py-1 rounded-md font-semibold hover:bg-indigo-900/60 hover:text-white transition flex items-center gap-1"
+                          >
+                            <span>Apply</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono pt-1 border-t border-slate-900">
+                          <div>
+                            <span className="text-[8.5px] text-slate-500 block">Fresher CTC:</span>
+                            <span className="text-emerald-400 font-bold">{recruiter.fresherSalary}</span>
+                          </div>
+                          <div>
+                            <span className="text-[8.5px] text-slate-500 block">Intern Stipend:</span>
+                            <span className="text-indigo-300 font-medium">{recruiter.internshipStipend}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-[8.5px] text-slate-400 flex items-center justify-between">
+                          <span className="italic text-indigo-300/80">{recruiter.hiringStatus}</span>
+                          <span className="text-[8px] text-slate-500">{recruiter.reviews}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Key Skills */}
+                <div>
+                  <span className="text-[9px] uppercase tracking-wider text-indigo-400 font-semibold font-mono block mb-2 font-sans">Primary Competency Gaps tested</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedCareer.skills.map((skill) => (
+                      <span 
+                        key={skill}
+                        className="text-[10px] py-1 px-2.5 bg-slate-950 font-medium text-slate-300 rounded-md border border-slate-850/80 hover:border-slate-800 transition"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recommended Certifications */}
+                <div className="space-y-2">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold font-mono block">Highlight Certifications</span>
+                  <div className="space-y-1.5">
+                    {selectedCareer.certifications.map((cert) => (
+                      <div key={cert} className="flex gap-2 p-2 bg-slate-950/20 border border-slate-850/60 rounded-lg">
+                        <Award className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                        <span className="text-[10px] text-slate-400 leading-normal">{cert}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onAnalyzeCareer(selectedCareer.title)}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 cursor-pointer transition hover:-translate-y-0.5"
+              >
+                <Sparkles className="w-4 h-4 animate-spin-slow" />
+                <span>Map Skill Gap & Roadmap</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="w-full lg:w-96 bg-slate-900/30 border border-slate-900 rounded-2xl p-6 text-center text-slate-500 flex items-center justify-center h-80">
+              <p className="text-xs">Select a career track on the left to inspect professional details and trigger tools.</p>
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Selected Career Details Panel Right Side */}
-      {selectedCareer ? (
-        <div className="w-full lg:w-96 bg-slate-900/60 border border-slate-850 rounded-2xl p-6 flex flex-col justify-between shrink-0 h-fit space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                {getCareerIcon(selectedCareer.title)}
+      {/* VIEW MODE 2: TOP COMPANIES & VERIFIED SALARY INDEX */}
+      {viewMode === 'companies' && (
+        <div className="space-y-5">
+          {/* Company Search & Sector Filters */}
+          <div className="p-4 bg-slate-900/40 border border-slate-850 rounded-2xl space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search by company name, sector, tech stack, or location..."
+                  value={companySearch}
+                  onChange={(e) => setCompanySearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-600 transition"
+                />
               </div>
-              <div>
-                <h2 className="text-base font-extrabold text-white leading-tight">{selectedCareer.title}</h2>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
-                  <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full border ${getDemandColor(selectedCareer.marketDemand)}`}>
-                    {selectedCareer.marketDemand} Demand
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed pt-2">
-              {selectedCareer.description}
-            </p>
-
-            {/* Salary Scale */}
-            <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-850">
-              <span className="text-[9px] uppercase tracking-wider text-slate-550 font-semibold font-mono block mb-2 text-slate-500">Approximate Base Compensation ({selectedCurrency.code})</span>
-              <div className="flex justify-between items-end">
-                <div>
-                  <span className="text-[10px] text-slate-500 font-mono block">Median Low</span>
-                  <span className="text-sm font-bold text-slate-350 font-mono">{formatFullSalary(selectedCareer.salaryMin, selectedCurrency)}</span>
-                </div>
-                <div className="flex-1 mx-3 h-1.5 bg-slate-850 rounded-full relative bottom-1.5 overflow-hidden">
-                  <div className="absolute left-1/4 right-1/4 h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full" />
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-500 font-mono block">Median High</span>
-                  <span className="text-sm font-bold text-white font-mono">{formatFullSalary(selectedCareer.salaryMax, selectedCurrency)}</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
+                <span>Displaying: <strong className="text-white">{filteredCompanies.length}</strong> verified companies</span>
               </div>
             </div>
 
-            {/* Key Skills */}
-            <div>
-              <span className="text-[9px] uppercase tracking-wider text-indigo-400 font-semibold font-mono block mb-2 font-sans">Primary Competency Gaps tested</span>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedCareer.skills.map((skill) => (
-                  <span 
-                    key={skill}
-                    className="text-[10px] py-1 px-2.5 bg-slate-950 font-medium text-slate-300 rounded-md border border-slate-850/80 hover:border-slate-800 transition"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Recommended Certifications */}
-            <div className="space-y-2">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold font-mono block">Highlight Certifications</span>
-              <div className="space-y-1.5">
-                {selectedCareer.certifications.map((cert) => (
-                  <div key={cert} className="flex gap-2 p-2 bg-slate-950/20 border border-slate-850/60 rounded-lg">
-                    <Award className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
-                    <span className="text-[10px] text-slate-400 leading-normal">{cert}</span>
-                  </div>
-                ))}
-              </div>
+            {/* Sector filter pills */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {sectorOptions.map((sector) => (
+                <button
+                  key={sector}
+                  onClick={() => setSelectedSector(sector)}
+                  className={`text-[10px] px-2.5 py-1 rounded-lg font-medium transition cursor-pointer border ${
+                    selectedSector === sector
+                      ? 'bg-indigo-600 border-indigo-500 text-white font-bold shadow-sm'
+                      : 'bg-slate-950/60 border-slate-850 text-slate-400 hover:text-white hover:border-slate-800'
+                  }`}
+                >
+                  {sector}
+                </button>
+              ))}
             </div>
           </div>
 
-          <button
-            onClick={() => onAnalyzeCareer(selectedCareer.title)}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 cursor-pointer transition hover:-translate-y-0.5"
-          >
-            <Sparkles className="w-4 h-4 animate-spin-slow" />
-            <span>Map Skill Gap & Roadmap</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          {/* Companies Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCompanies.map((company) => (
+              <div
+                key={company.id}
+                className="bg-slate-900/50 border border-slate-850 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-slate-800 hover:bg-slate-900/80 transition-all duration-150"
+              >
+                <div className="space-y-3">
+                  {/* Top Company Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+                        <Building className="w-5 h-5 text-indigo-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-white leading-tight">{company.name}</h3>
+                        <span className="text-[10px] text-slate-400 font-sans block mt-0.5">{company.sector}</span>
+                      </div>
+                    </div>
+
+                    {/* AmbitionBox Rating Pill */}
+                    <a
+                      href={company.ambitionBoxUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] bg-amber-950/50 border border-amber-800/70 hover:border-amber-500 text-amber-400 px-2 py-0.5 rounded-md font-mono shrink-0 transition"
+                      title="Verify authentic employee reviews and salaries on AmbitionBox"
+                    >
+                      <span>★ {company.rating}</span>
+                      <span className="text-[8px] text-amber-500/80">({company.reviewsCount})</span>
+                      <ExternalLink className="w-2.5 h-2.5 text-amber-400/80" />
+                    </a>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
+                    {company.about}
+                  </p>
+
+                  {/* Verified Salaries Breakdown Box */}
+                  <div className="p-3 bg-slate-950/70 border border-slate-850/80 rounded-xl space-y-2 font-mono">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-slate-500">Fresher CTC:</span>
+                      <span className="text-emerald-400 font-extrabold">{company.fresherCtc}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-slate-500">Intern Stipend:</span>
+                      <span className="text-indigo-300 font-bold">{company.internStipend}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-900">
+                      <span className="text-slate-500">Mid-Level (3-5y):</span>
+                      <span className="text-slate-300 font-medium">{company.midLevelCtc}</span>
+                    </div>
+                  </div>
+
+                  {/* Locations & Open Roles */}
+                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                    <span className="px-2 py-0.5 bg-slate-950 border border-slate-850 rounded text-slate-400 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-rose-400" />
+                      <span>{company.locations.slice(0, 2).join(', ')}{company.locations.length > 2 ? ` +${company.locations.length - 2}` : ''}</span>
+                    </span>
+
+                    <span className="px-2 py-0.5 bg-indigo-950/60 border border-indigo-900/60 rounded text-indigo-300 font-mono flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{company.openRolesCount} Open Vacancies</span>
+                    </span>
+                  </div>
+
+                  {/* Featured Roles */}
+                  <div className="space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-500 font-mono block">Recruiting For</span>
+                    <div className="flex flex-wrap gap-1">
+                      {company.featuredRoles.map(role => (
+                        <span key={role} className="text-[9px] px-2 py-0.5 bg-slate-950/80 border border-slate-850 rounded text-slate-300">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions: View Details & Apply on Career Page */}
+                <div className="pt-2 border-t border-slate-900 flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedCompanyModal(company)}
+                    className="flex-1 py-2 px-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer text-center"
+                  >
+                    View Details
+                  </button>
+
+                  <a
+                    href={company.directCareersUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <span>Careers Page</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      ) : (
-        <div className="w-full lg:w-96 bg-slate-900/30 border border-slate-900 rounded-2xl p-6 text-center text-slate-500 flex items-center justify-center h-80">
-          <p className="text-xs">Select a career track on the left to inspect professional details and trigger tools.</p>
+      )}
+
+      {/* Selected Company Modal */}
+      {selectedCompanyModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-5">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <Building className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white leading-tight">{selectedCompanyModal.name}</h3>
+                  <span className="text-xs text-slate-400">{selectedCompanyModal.sector} • {selectedCompanyModal.headquarters}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedCompanyModal(null)}
+                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* AmbitionBox Rating & Hiring Batch */}
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <span className="text-[10px] text-slate-500 uppercase block mb-1">AmbitionBox Rating</span>
+                <a
+                  href={selectedCompanyModal.ambitionBoxUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-400 font-bold flex items-center gap-1 hover:underline"
+                >
+                  ★ {selectedCompanyModal.rating} ({selectedCompanyModal.reviewsCount}) ↗
+                </a>
+              </div>
+
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <span className="text-[10px] text-slate-500 uppercase block mb-1">Hiring Batch Target</span>
+                <span className="text-emerald-400 font-bold">{selectedCompanyModal.hiringBatch}</span>
+              </div>
+            </div>
+
+            {/* Complete Compensation Breakdown */}
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2.5 font-mono text-xs">
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block">Verified Salary Benchmarks</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Fresher / Graduate CTC:</span>
+                  <span className="text-emerald-400 font-bold text-sm">{selectedCompanyModal.fresherCtc}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Internship Monthly Stipend:</span>
+                  <span className="text-indigo-300 font-bold text-sm">{selectedCompanyModal.internStipend}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Mid-Level (3-5 yrs):</span>
+                  <span className="text-slate-300 font-medium">{selectedCompanyModal.midLevelCtc}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] block">Senior / Lead (6+ yrs):</span>
+                  <span className="text-slate-300 font-medium">{selectedCompanyModal.seniorCtc}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* About & Culture */}
+            <div className="space-y-2 text-xs text-slate-300">
+              <span className="text-[10px] font-bold text-slate-500 uppercase font-mono block">Workplace Culture & Insights</span>
+              <p className="leading-relaxed text-slate-400">{selectedCompanyModal.workCulture}</p>
+            </div>
+
+            {/* Perks & Benefits */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase font-mono block">Verified Employee Perks</span>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedCompanyModal.benefits.map((benefit, bIdx) => (
+                  <span key={bIdx} className="text-[11px] px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-indigo-400" />
+                    <span>{benefit}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-800 flex gap-3">
+              <a
+                href={selectedCompanyModal.ambitionBoxUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-4 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-amber-400 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <span>Read AmbitionBox Reviews</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+
+              <a
+                href={selectedCompanyModal.directCareersUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20"
+              >
+                <span>Apply on Official Careers Portal</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>

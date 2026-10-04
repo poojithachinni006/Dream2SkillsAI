@@ -1,0 +1,268 @@
+{
+  "users": [
+    {
+      "id": "user-demo-123",
+      "name": "Alex Developer",
+      "email": "poojithachinni006@gmail.com",
+      "role": "Aspiring AI Specialist",
+      "createdAt": "2026-10-02T06:10:07.208Z"
+    }
+  ],
+  "careerGoals": [
+    {
+      "id": "goal-demo",
+      "userId": "user-demo-123",
+      "targetCareer": "AI Engineer",
+      "readinessScore": 25
+    }
+  ],
+  "skills": [
+    {
+      "id": "sk-mg3omu9",
+      "userId": "user-demo-123",
+      "skillName": "Python",
+      "completed": true,
+      "category": "core"
+    },
+    {
+      "id": "sk-2bmkl3w",
+      "userId": "user-demo-123",
+      "skillName": "SQL",
+      "completed": true,
+      "category": "core"
+    },
+    {
+      "id": "sk-7jvgcna",
+      "userId": "user-demo-123",
+      "skillName": "Machine Learning",
+      "completed": false,
+      "category": "missing"
+    },
+    {
+      "id": "sk-3twb0m1",
+      "userId": "user-demo-123",
+      "skillName": "Deep Learning",
+      "completed": false,
+      "category": "missing"
+    },
+    {
+      "id": "sk-7jbr861",
+      "userId": "user-demo-123",
+      "skillName": "TensorFlow/PyTorch",
+      "completed": false,
+      "category": "missing"
+    },
+    {
+      "id": "sk-y2dg73x",
+      "userId": "user-demo-123",
+      "skillName": "Data Structures & Algorithms",
+      "completed": false,
+      "category": "missing"
+    },
+    {
+      "id": "sk-n98ea92",
+      "userId": "user-demo-123",
+      "skillName": "Model Deployment",
+      "completed": false,
+      "category": "missing"
+    },
+    {
+      "id": "sk-hh4og89",
+      "userId": "user-demo-123",
+      "skillName": "Cloud Platforms (AWS/GCP/Azure)",
+      "completed": false,
+      "category": "missing"
+    }
+  ],
+  "roadmaps": [
+    {
+      "id": "rm-demo",
+      "userId": "user-demo-123",
+      "roadmapData": {
+        "career": "AI Engineer",
+        "beginner": {
+          "skills": [
+            "Advanced Multi-variable Calculus & Linear Algebra",
+            "Python Pandas & NumPy",
+            "Supervised ML Algorithms"
+          ],
+          "projects": [
+            {
+              "title": "Customer Churn Predictor",
+              "description": "Evaluate subscriber churn percentages using regularized logistic regression.",
+              "complexity": "Beginner",
+              "features": [
+                "Scikit-learn",
+                "Feature Engineering",
+                "ROC Curves"
+              ]
+            }
+          ],
+          "resources": [
+            {
+              "title": "Fast.ai Practical Deep Learning for Coders",
+              "url": "https://course.fast.ai/",
+              "type": "Course"
+            },
+            {
+              "title": "Machine Learning by Andrew Ng",
+              "url": "https://coursera.org",
+              "type": "Course"
+            }
+          ],
+          "estimatedDuration": "4-6 Weeks"
+        },
+        "intermediate": {
+          "skills": [
+            "PyTorch Foundations",
+            "Convolutional & Recurrent Architectures",
+            "Vector Databases (Chroma/Pinecone)"
+          ],
+          "projects": [
+            {
+              "title": "Semantic Document Search Engine",
+              "description": "Encode text strings into dense floating-point vector spaces for fast cosine mapping.",
+              "complexity": "Intermediate",
+              "features": [
+                "Streamlit",
+                "HuggingFace Embeddings",
+                "Cosine Search"
+              ]
+            }
+          ],
+          "resources": [
+            {
+              "title": "DeepLearning.AI PyTorch Specialization",
+              "url": "https://deeplearning.ai",
+              "type": "Course"
+            }
+          ],
+          "estimatedDuration": "6-8 Weeks"
+        },
+        "advanced": {
+          "skills": [
+            "LLM Fine-Tuning (QLoRA)",
+            "Model Profiling & ONNX compilation",
+            "MLOps deployment models"
+          ],
+          "projects": [
+            {
+              "title": "Auto-LLM Customer Copilot",
+              "description": "A resilient chat agent running local SLM logic behind low-latency streaming endpoints.",
+              "complexity": "Advanced",
+              "features": [
+                "LangChain",
+                "vLLM",
+                "Docker Container deployment"
+              ]
+            }
+          ],
+          "resources": [
+            {
+              "title": "HuggingFace NLP Course Guidance",
+              "url": "https://huggingface.co/learn",
+              "type": "Course"
+            }
+          ],
+          "estimatedDuration": "8-10 Weeks"
+        }
+      },
+      "createdAt": "2026-10-02T06:10:07.208Z"
+    }
+  ],
+  "progress": [],
+  "studyPlans": [
+    {
+      "id": "st-fb-lhly5gq",
+      "userId": "user-demo-123",
+      "career": "AI Engineer",
+      "hoursPerDay": 2,
+      "targetDate": "2026-07-01",
+      "weeks": [
+        {
+          "weekNumber": 1,
+          "focus": "Mastering foundational toolchains and environment configs for AI Engineer",
+          "days": [
+            {
+              "dayName": "Monday",
+              "topic": "Configure AI Engineer developer environment & basic options",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Tuesday",
+              "topic": "Dive deep into grammar, syntax patterns, and rules",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Wednesday",
+              "topic": "Algorithmic logic exercises and standard structures",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Thursday",
+              "topic": "Build first simple terminal application and test boundaries",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Friday",
+              "topic": "Review, debug errors, and save a template on public repository",
+              "hours": 2,
+              "completed": false
+            }
+          ],
+          "milestones": [
+            "Create a fully functioning starter AI Engineer kit",
+            "Adopt robust version control standards"
+          ]
+        },
+        {
+          "weekNumber": 2,
+          "focus": "Advancing to interactive modules, APIs, and project implementations",
+          "days": [
+            {
+              "dayName": "Monday",
+              "topic": "Integrate relational database models or file-backed indexes",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Tuesday",
+              "topic": "Develop core API logic routes and custom service triggers",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Wednesday",
+              "topic": "Establish state handling rules and simple user interfaces",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Thursday",
+              "topic": "Perform comprehensive mock testing runs and error optimizations",
+              "hours": 2,
+              "completed": false
+            },
+            {
+              "dayName": "Friday",
+              "topic": "Prepare showcase demo and resume-ready summaries",
+              "hours": 2,
+              "completed": false
+            }
+          ],
+          "milestones": [
+            "Demonstrate responsive database and API connections",
+            "Polish active profile presentation"
+          ]
+        }
+      ],
+      "note": "Adaptive local study planner activated due to sustained high demand on AI model services.",
+      "createdAt": "2026-10-02T06:23:16.854Z"
+    }
+  ],
+  "chats": []
+}

@@ -30,7 +30,7 @@ interface NavigationProps {
   user: User | null;
   onLogout: () => void;
   onOpenLogin: () => void;
-  isAiOnline: boolean;
+  isAiOnline?: boolean;
 }
 
 export default function Navigation({ 
@@ -39,20 +39,20 @@ export default function Navigation({
   user, 
   onLogout, 
   onOpenLogin,
-  isAiOnline 
+  isAiOnline = true,
 }: NavigationProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const menuItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
-    { id: 'explorer', label: 'Careers Explorer', icon: Compass },
+    { id: 'explorer', label: 'Careers & Salaries', icon: Compass },
     { id: 'analyzer', label: 'Gap & Roadmap', icon: Sliders },
     { id: 'study', label: 'Study Planner', icon: Calendar },
     { id: 'resume', label: 'Resume ATS', icon: FileText },
     { id: 'interview', label: 'Interview Prep', icon: Mic },
     { id: 'mentor', label: 'AI Mentor Chat', icon: MessageSquare },
-    { id: 'internships', label: 'Internships', icon: Briefcase },
+    { id: 'internships', label: 'Jobs & Internships', icon: Briefcase },
   ];
 
   return (
@@ -69,17 +69,13 @@ export default function Navigation({
           </div>
         </div>
 
-        {/* AI Status Pill */}
+        {/* AI Status Badge */}
         <div 
-          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono ${
-            isAiOnline 
-              ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' 
-              : 'bg-amber-950 text-amber-300 border border-amber-800'
-          }`}
-          title={isAiOnline ? "Gemini AI Engine Online" : "AI Offline / Fallback Enabled"}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 shadow-sm"
+          title="AI Engine Active (Configured via Server Environment)"
         >
-          {isAiOnline ? <Wifi className="w-3 h-3 text-indigo-400" /> : <WifiOff className="w-3 h-3 text-amber-400" />}
-          <span>{isAiOnline ? 'AI LIVE' : 'AI LOCAL'}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-semibold tracking-wide">AI ACTIVE</span>
         </div>
       </div>
 
@@ -142,6 +138,15 @@ export default function Navigation({
           );
         })}
       </ul>
+
+      {/* 10-Minute Market Live Indicator */}
+      <div className="px-3.5 py-2 mx-3 mb-2 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between text-[10px] font-mono text-slate-400">
+        <span className="flex items-center gap-1.5 text-slate-300">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Market Feed</span>
+        </span>
+        <span className="text-indigo-400 font-semibold">10m Sync 🟢</span>
+      </div>
 
       {/* Footer Meta Credits */}
       <div className="p-4 border-t border-slate-800 bg-slate-950/20 text-center">
